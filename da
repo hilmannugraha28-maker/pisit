@@ -17,8 +17,35 @@ local jobId   = game.JobId
 -- ═══════════ CONFIG ═══════════
 local WEBHOOK_URL    = "https://discord.com/api/webhooks/1510604266094727350/KaePnBfD09tfO6TnzwgteSJq-pqOJEFSDoz9cgOm07v8Se-_z3civS06Z6lQRZibZBuf"
 local MAX_PRICE      = 1500       -- harga MAKSIMAL (tokens) untuk di-list
+-- ITEM FILTER
+-- "megalodon" = match SEMUA megalodon (Galaxy, Frozen, Bermutasi, dll)
+-- Rod skin = nama spesifik dari game
+local TRACKED_ITEMS = {
+    "megalodon",              -- ALL megalodon (Galaxy, Frozen, Bermutasi, Ghost, dll)
 
--- (Tidak ada filter item - scan SEMUA yang ada di booth)
+    -- Rod Skins (dari Fish It game)
+    "holy trident",
+    "draconic soul",
+    "dark matter scythe",
+    "crimson retribution",
+    "serpent trident",
+    "void reaper",
+    "celestial",
+    "infernal",
+    "aurora",
+    "neon",
+    "enchanted",
+    "divine",
+    "demon",
+    "phoenix",
+    "dragon",
+    "frost bite",
+    "shadow blade",
+    "trident",
+    "scythe",
+    "reaper",
+    "rod skin",
+}
 
 -- SERVER HOP CONFIG
 local REHOP_ENABLED  = true       -- auto pindah server setelah scan
@@ -27,6 +54,18 @@ local SCAN_WAIT      = 8          -- tunggu data load sebelum scan (detik)
 local MIN_PLAYERS    = 10         -- minimal player di server target
 local RETRY_DELAY    = 3          -- delay antar retry join (detik)
 -- ═══════════════════════════════
+
+-- Cek apakah item name cocok dengan tracked items
+local function isTrackedItem(itemName)
+    if not itemName then return false end
+    local lower = itemName:lower()
+    for _, keyword in ipairs(TRACKED_ITEMS) do
+        if lower:find(keyword, 1, true) then
+            return true
+        end
+    end
+    return false
+end
 
 local httpFunc = (syn and syn.request) or (http and http.request)
     or http_request or (fluxus and fluxus.request) or request
@@ -491,13 +530,28 @@ local function doScan()
     local booths = findAllBooths()
     print("🏪 Ditemukan "..#booths.." booth model di workspace")
 
-    local items = extractBoothItems()
-    print("📦 Ditemukan "..#items.." listing total")
+    local allItems = extractBoothItems()
+    print("📦 Ditemukan "..#allItems.." listing total di booth")
 
-    if #items == 0 then
+    -- Filter: hanya megalodon & rod skin
+    local items = {}
+    for _, item in ipairs(allItems) do
+        local name = resolveItemName(item)
+        if isTrackedItem(name) or isTrackedItem(item.name) then
+            table.insert(items, item)
+        end
+    end
+    print("🎯 Megalodon + Rod Skin: "..#items.." dari "..#allItems.." total")
+
+    if #allItems == 0 then
         print("⚠️ Tidak ada listing terdeteksi!")
         print("   Menjalankan booth structure dump untuk debug...")
         dumpBoothStructure()
+        return
+    end
+
+    if #items == 0 then
+        print("❌ Tidak ada megalodon/rod skin di server ini")
         return
     end
 
