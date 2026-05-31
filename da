@@ -527,7 +527,7 @@ local function doScan()
     local allItems = extractBoothItems()
     print("📦 Ditemukan "..#allItems.." listing total di booth")
 
-    -- Filter: hanya megalodon & rod skin
+    -- Filter: hanya item yang di-track
     local items = {}
     for _, item in ipairs(allItems) do
         local name = resolveItemName(item)
@@ -535,7 +535,7 @@ local function doScan()
             table.insert(items, item)
         end
     end
-    print("🎯 Megalodon + Rod Skin: "..#items.." dari "..#allItems.." total")
+    print("🎯 Tracked items: "..#items.." dari "..#allItems.." total")
 
     if #allItems == 0 then
         print("⚠️ Tidak ada listing terdeteksi!")
@@ -545,7 +545,7 @@ local function doScan()
     end
 
     if #items == 0 then
-        print("❌ Tidak ada megalodon/rod skin di server ini")
+        print("❌ Tidak ada item yang di-track di server ini")
         return
     end
 
