@@ -858,7 +858,7 @@ print("🐟  Server:  " .. jobId:sub(1,12))
 print("🐟  Max Price: " .. MAX_PRICE .. " Tokens")
 print("🐟  Min Players: " .. MIN_PLAYERS)
 print("🐟  Rehop: " .. (REHOP_ENABLED and "✅ ON" or "❌ OFF"))
-print("🐟  Filter: megalodon, mutasi, bloodmoon, disco, 1x1x1")
+print("🐟  Filter: megalodon saja")
 print("🐟 ═══════════════════════════════════")
 
 -- Setup auto execute setelah teleport
