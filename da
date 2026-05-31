@@ -20,25 +20,6 @@ local MAX_PRICE      = 1500       -- harga MAKSIMAL (tokens) untuk di-list
 -- ITEM FILTER
 local TRACKED_ITEMS = {
     "megalodon",              -- ALL megalodon (Galaxy, Frozen, Bermutasi, Ghost, dll)
-
-    -- Mutasi / Mutation variants
-    "bermutasi",              -- Bahasa Indonesia
-    "mutated",                -- English
-    "mutation",
-    "stone",                  -- Batu
-    "gold",                   -- Emas
-    "ghost",                  -- Hantu
-    "radioactive",            -- Radioaktif
-    "lightning",              -- Petir
-    "midnight",               -- Tengah Malam
-    "fairy dust",             -- Debu Peri
-    "gemstone",               -- Permata
-
-    -- Extra items
-    "moon fragment",
-    "bloodmoon",
-    "disco",
-    "1x1x1",
 }
 
 -- SERVER HOP CONFIG
