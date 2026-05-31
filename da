@@ -18,33 +18,27 @@ local jobId   = game.JobId
 local WEBHOOK_URL    = "https://discord.com/api/webhooks/1510604266094727350/KaePnBfD09tfO6TnzwgteSJq-pqOJEFSDoz9cgOm07v8Se-_z3civS06Z6lQRZibZBuf"
 local MAX_PRICE      = 1500       -- harga MAKSIMAL (tokens) untuk di-list
 -- ITEM FILTER
--- "megalodon" = match SEMUA megalodon (Galaxy, Frozen, Bermutasi, dll)
--- Rod skin = nama spesifik dari game
 local TRACKED_ITEMS = {
     "megalodon",              -- ALL megalodon (Galaxy, Frozen, Bermutasi, Ghost, dll)
 
-    -- Rod Skins (dari Fish It game)
-    "holy trident",
-    "draconic soul",
-    "dark matter scythe",
-    "crimson retribution",
-    "serpent trident",
-    "void reaper",
-    "celestial",
-    "infernal",
-    "aurora",
-    "neon",
-    "enchanted",
-    "divine",
-    "demon",
-    "phoenix",
-    "dragon",
-    "frost bite",
-    "shadow blade",
-    "trident",
-    "scythe",
-    "reaper",
-    "rod skin",
+    -- Mutasi / Mutation variants
+    "bermutasi",              -- Bahasa Indonesia
+    "mutated",                -- English
+    "mutation",
+    "stone",                  -- Batu
+    "gold",                   -- Emas
+    "ghost",                  -- Hantu
+    "radioactive",            -- Radioaktif
+    "lightning",              -- Petir
+    "midnight",               -- Tengah Malam
+    "fairy dust",             -- Debu Peri
+    "gemstone",               -- Permata
+
+    -- Extra items
+    "moon fragment",
+    "bloodmoon",
+    "disco",
+    "1x1x1",
 }
 
 -- SERVER HOP CONFIG
