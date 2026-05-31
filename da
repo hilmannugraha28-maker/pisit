@@ -448,37 +448,49 @@ local function sendSnipesToDiscord(snipes)
     )
 
     -- Header description
+    local joinLink = string.format(
+        "https://www.roblox.com/games/start?placeId=%d&gameInstanceId=%s",
+        placeId, jobId
+    )
     local desc = string.format(
         "**Server:** `%s`\n"..
         "**Scanner:** @%s\n"..
         "**Total:** %d item (max %d tokens)\n\n"..
+        "🔗 **[Join Server](%s)**\n\n"..
         "**Join Script:**\n```\n%s\n```",
-        jobId:sub(1,12), player.Name, maxItems, MAX_PRICE, teleportScript
+        jobId:sub(1,12), player.Name, maxItems, MAX_PRICE, joinLink, teleportScript
     )
 
-    -- Build fields: 5 items per kolom, inline side by side
+    -- Build fields: 1 item per field, inline (3 kolom per baris)
     local fields = {}
-    local colSize = 5
-    local col = 1
 
-    for i = 1, maxItems, colSize do
-        local lines = ""
-        for j = i, math.min(i + colSize - 1, maxItems) do
-            local s = newSnipes[j]
-            local rapStr = s.rap > 0 and fmt(s.rap) or "N/A"
-            lines = lines .. string.format(
-                "**#%d** %s\n💰 %s | RAP: %s\n👤 %s\n\n",
-                j, s.name, fmt(s.price), rapStr, s.seller
-            )
-        end
+    for i = 1, maxItems do
+        local s = newSnipes[i]
+        local rapStr = s.rap > 0 and fmt(s.rap) or "N/A"
+        local rapPct = s.rapPct or 0
+        local saveStr = s.save ~= 0 and fmt(s.save) or "0"
+        local alpStr = s.alpStr or "N/A"
+
+        local fieldValue = string.format(
+            "Nama: **%s**\n"..
+            "Harga: **%s Tokens**\n"..
+            "Seller: %s\n"..
+            "RAP: **%s** (%d%%)\n"..
+            "Save: **%s Tokens**\n"..
+            "ALP: **%s**",
+            s.name,
+            fmt(s.price),
+            s.seller,
+            rapStr, rapPct,
+            saveStr,
+            alpStr
+        )
 
         table.insert(fields, {
-            name = "📋 " .. i .. "-" .. math.min(i + colSize - 1, maxItems),
-            value = lines,
+            name = "🔥 #" .. i .. " SNIPE",
+            value = fieldValue,
             inline = true
         })
-
-        col += 1
     end
 
     local embed = {
