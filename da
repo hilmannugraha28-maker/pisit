@@ -16,15 +16,16 @@ local jobId   = game.JobId
 
 -- ═══════════ CONFIG ═══════════
 local WEBHOOK_URL    = "https://discord.com/api/webhooks/1510604266094727350/KaePnBfD09tfO6TnzwgteSJq-pqOJEFSDoz9cgOm07v8Se-_z3civS06Z6lQRZibZBuf"
-local MAX_PRICE      = 1500        -- harga MAKSIMAL (tokens) untuk di-list
+local MAX_PRICE      = 1000        -- harga MAKSIMAL (tokens) untuk di-list
 
 -- ITEM FILTER: hanya track item ini
 -- Semua keyword di-lowercase saat matching
+-- PENTING: keyword harus SPESIFIK agar tidak match item lain
 local TRACKED_ITEMS = {
-    "megalodon bermutasi",
-    "mutated megalodon",
-    "megalodon",
-    "skin",
+    "megalodon bermutasi",     -- Megalodon Bermutasi
+    "mutated megalodon",      -- Mutated Megalodon (English)
+    "skin",                   -- Semua skin
+    -- JANGAN tambah "megalodon" saja, karena akan match SEMUA megalodon!
 }
 
 -- SERVER HOP CONFIG
@@ -822,7 +823,7 @@ if REHOP_ENABLED then
     print("\n🔄 AUTO REHOP AKTIF!")
     print("   Flow: Scan → Hop → Scan → Hop → ...")
     print("   Target: server dengan "..MIN_PLAYERS.."+ players")
-    print("   Jika server penuh: retry "..MAX_RETRY_JOIN.."x")
+    print("   Jika server penuh: retry terus sampai masuk")
     task.spawn(function()
         task.wait(2)
         hopToNextServer()
