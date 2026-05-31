@@ -438,52 +438,57 @@ local function sendSnipesToDiscord(snipes)
     end
     if #newSnipes == 0 then return end
 
+    -- Max 25 items
+    local maxItems = math.min(25, #newSnipes)
+
     -- Build teleport script
     local teleportScript = string.format(
         'game:GetService("TeleportService"):TeleportToPlaceInstance(%d, "%s", game.Players.LocalPlayer)',
         placeId, jobId
     )
 
-    -- Build snipe descriptions
+    -- Header description
     local desc = string.format(
-        "**[PLAZA — Max %d Tokens]** Server: `%s`\n"..
-        "Scanner: **@%s**\n"..
-        "Total Item: **%d**\n"..
-        "🔗 Join Server\n\n"..
-        "**Join Script:**\n```\n%s\n```\n",
-        MAX_PRICE, jobId:sub(1,8), player.Name, #newSnipes, teleportScript
+        "**Server:** `%s`\n"..
+        "**Scanner:** @%s\n"..
+        "**Total:** %d item (max %d tokens)\n\n"..
+        "**Join Script:**\n```\n%s\n```",
+        jobId:sub(1,12), player.Name, maxItems, MAX_PRICE, teleportScript
     )
 
-    -- Tambahkan tiap snipe
-    for i, s in ipairs(newSnipes) do
-        if i > 10 then
-            desc = desc .. "\n*...dan " .. (#newSnipes - 10) .. " snipe lainnya*"
-            break
+    -- Build fields: 5 items per kolom, inline side by side
+    local fields = {}
+    local colSize = 5
+    local col = 1
+
+    for i = 1, maxItems, colSize do
+        local lines = ""
+        for j = i, math.min(i + colSize - 1, maxItems) do
+            local s = newSnipes[j]
+            local rapStr = s.rap > 0 and fmt(s.rap) or "N/A"
+            lines = lines .. string.format(
+                "**#%d** %s\n💰 %s | RAP: %s\n👤 %s\n\n",
+                j, s.name, fmt(s.price), rapStr, s.seller
+            )
         end
-        desc = desc .. string.format(
-            "\n🔥 **#%d SNIPE**\n"..
-            "Nama: **%s**\n"..
-            "Harga: **%s Tokens**\n"..
-            "Seller: %s\n"..
-            "RAP: **%s** (%d%%)\n"..
-            "Save: **%s Tokens**\n"..
-            "ALP: **%s**\n",
-            i, s.name,
-            fmt(s.price),
-            s.seller,
-            fmt(s.rap), s.rapPct,
-            fmt(s.save),
-            s.alpStr
-        )
+
+        table.insert(fields, {
+            name = "📋 " .. i .. "-" .. math.min(i + colSize - 1, maxItems),
+            value = lines,
+            inline = true
+        })
+
+        col += 1
     end
 
     local embed = {
-        title       = "🐟 [PLAZA] Skin/Megalodon ≤ "..MAX_PRICE.." Tokens!",
+        title       = "🐟 Megalodon ≤ "..MAX_PRICE.." Tokens!",
         description = desc,
         color       = 3066993,
+        fields      = fields,
         footer      = {
-            text = "PLAZA Sniper | Scanner: @"..player.Name
-                .." | PlaceId: "..placeId.." • "..os.date("%d/%m/%Y %H:%M")
+            text = "Fish It Sniper | @"..player.Name
+                .." | "..os.date("%d/%m/%Y %H:%M")
         }
     }
 
@@ -493,7 +498,7 @@ local function sendSnipesToDiscord(snipes)
         embeds     = { embed }
     })
 
-    print("✅ Dikirim "..#newSnipes.." snipe ke Discord!")
+    print("✅ Dikirim "..maxItems.." item ke Discord!")
 end
 
 -- ═══════════════════════════════
@@ -519,6 +524,17 @@ local function doScan()
             table.insert(items, item)
         end
     end
+
+    -- Sort: megalodon paling atas, lalu by harga termurah
+    table.sort(items, function(a, b)
+        local aName = resolveItemName(a):lower()
+        local bName = resolveItemName(b):lower()
+        local aMega = aName:find("megalodon") and true or false
+        local bMega = bName:find("megalodon") and true or false
+        if aMega ~= bMega then return aMega end
+        return a.price < b.price
+    end)
+
     print("🎯 Tracked items: "..#items.." dari "..#allItems.." total")
 
     if #allItems == 0 then
