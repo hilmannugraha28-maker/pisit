@@ -15,7 +15,7 @@ local placeId = game.PlaceId
 local jobId   = game.JobId
 
 -- ═══════════ CONFIG ═══════════
-local WEBHOOK_URL    = "https://discord.com/api/webhooks/1510604266094727350/KaePnBfD09tfO6TnzwgteSJq-pqOJEFSDoz9cgOm07v8Se-_z3civS06Z6lQRZibZBuf"
+local WEBHOOK_URL    = ""
 local MAX_PRICE      = 1500        -- harga MAKSIMAL (tokens) untuk di-list
 
 -- ITEM FILTER: hanya track item ini
