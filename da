@@ -170,7 +170,10 @@ local function findAllBooths()
     for _, desc in ipairs(Workspace:GetDescendants()) do
         if desc:IsA("Model") and not seen[desc] then
             local n = desc.Name:lower()
-            if n:find("booth") or n:find("stall") or n:find("stand") then
+            local path = desc:GetFullName():lower()
+            -- Skip menu/shop stands (Rod Stand, Bobber Stand, dll)
+            local isMenu = path:find("menu") or path:find("worldsetup") or path:find("shop")
+            if not isMenu and (n:find("booth") or n:find("stall") or n:find("stand")) then
                 seen[desc] = true
                 table.insert(booths, desc)
             end
@@ -874,7 +877,7 @@ print("🐟  Server:  " .. jobId:sub(1,12))
 print("🐟  Max Price: " .. MAX_PRICE .. " Tokens")
 print("🐟  Min Players: " .. MIN_PLAYERS)
 print("🐟  Rehop: " .. (REHOP_ENABLED and "✅ ON" or "❌ OFF"))
-print("🐟  Filter: skin, megalodon bermutasi")
+print("🐟  Filter: megalodon, mutasi, bloodmoon, disco, 1x1x1")
 print("🐟 ═══════════════════════════════════")
 
 -- Setup auto execute setelah teleport
