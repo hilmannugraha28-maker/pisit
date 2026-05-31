@@ -15,17 +15,37 @@ local placeId = game.PlaceId
 local jobId   = game.JobId
 
 -- ═══════════ CONFIG ═══════════
-local WEBHOOK_URL    = "https://discord.com/api/webhooks/1510604266094727350/KaePnBfD09tfO6TnzwgteSJq-pqOJEFSDoz9cgOm07v8Se-_z3civS06Z6lQRZibZBuf"
-local MIN_PROFIT     = 100        -- minimum profit (tokens) untuk dikirim
+local WEBHOOK_URL    = "GANTI_WEBHOOK_DISCORD_KAMU"
+local MAX_PRICE      = 1500        -- harga MAKSIMAL (tokens) untuk di-list
+
+-- ITEM FILTER: hanya track item ini
+-- Semua keyword di-lowercase saat matching
+local TRACKED_ITEMS = {
+    "megalodon bermutasi",
+    "mutated megalodon",
+    "megalodon",
+    "skin",
+}
 
 -- SERVER HOP CONFIG
 local REHOP_ENABLED  = true       -- auto pindah server setelah scan
 local REHOP_DELAY    = 5          -- delay (detik) sebelum hop
 local SCAN_WAIT      = 8          -- tunggu data load sebelum scan (detik)
 local MIN_PLAYERS    = 10         -- minimal player di server target
-local MAX_RETRY_JOIN = 10         -- max retry jika server penuh
-local RETRY_DELAY    = 5          -- delay antar retry join (detik)
+local RETRY_DELAY    = 3          -- delay antar retry join (detik)
 -- ═══════════════════════════════
+
+-- Cek apakah item name cocok dengan tracked items
+local function isTrackedItem(itemName)
+    if not itemName then return false end
+    local lower = itemName:lower()
+    for _, keyword in ipairs(TRACKED_ITEMS) do
+        if lower:find(keyword, 1, true) then
+            return true
+        end
+    end
+    return false
+end
 
 local httpFunc = (syn and syn.request) or (http and http.request)
     or http_request or (fluxus and fluxus.request) or request
@@ -357,7 +377,7 @@ local function resolveItemName(item)
 end
 
 -- ═══════════════════════════════
--- HITUNG PROFIT & FILTER SNIPE
+-- FILTER: Harga <= MAX_PRICE
 -- ═══════════════════════════════
 local function findSnipes(items)
     local snipes = {}
@@ -365,43 +385,41 @@ local function findSnipes(items)
         -- Skip item milik sendiri
         if item.seller == player.Name then continue end
 
-        local rap = item.rap
         local price = item.price
+        local rap = item.rap
 
-        -- Jika RAP ada dan harga di bawah RAP
-        if rap > 0 and price < rap then
-            local save = rap - price
-            if save >= MIN_PROFIT then
-                local rapPct = math.floor((price / rap) * 100)
-                local alpPct = 0
-                local alpStr = "N/A"
-                if item.alp > 0 then
-                    alpPct = math.floor((price / item.alp) * 100)
-                    alpStr = fmt(math.floor(item.alp)).." ("..alpPct.."%)"
-                    if item.alpCount > 0 then
-                        alpStr = alpStr .. " · "..item.alpCount.." listings"
-                    end
+        -- Hanya list item dengan harga <= MAX_PRICE
+        if price <= MAX_PRICE then
+            local rapPct = rap > 0 and math.floor((price / rap) * 100) or 0
+            local save = rap > 0 and (rap - price) or 0
+            local alpPct = 0
+            local alpStr = "N/A"
+            if item.alp > 0 then
+                alpPct = math.floor((price / item.alp) * 100)
+                alpStr = fmt(math.floor(item.alp)).." ("..alpPct.."%)"
+                if item.alpCount > 0 then
+                    alpStr = alpStr .. " · "..item.alpCount.." listings"
                 end
-
-                table.insert(snipes, {
-                    name     = resolveItemName(item),
-                    price    = price,
-                    seller   = item.seller,
-                    rap      = rap,
-                    rapPct   = rapPct,
-                    save     = save,
-                    alp      = item.alp,
-                    alpPct   = alpPct,
-                    alpStr   = alpStr,
-                    alpCount = item.alpCount,
-                    uid      = item.uid,
-                })
             end
+
+            table.insert(snipes, {
+                name     = resolveItemName(item),
+                price    = price,
+                seller   = item.seller,
+                rap      = rap,
+                rapPct   = rapPct,
+                save     = save,
+                alp      = item.alp,
+                alpPct   = alpPct,
+                alpStr   = alpStr,
+                alpCount = item.alpCount,
+                uid      = item.uid,
+            })
         end
     end
 
-    -- Sort by save descending
-    table.sort(snipes, function(a, b) return a.save > b.save end)
+    -- Sort by price ascending (termurah dulu)
+    table.sort(snipes, function(a, b) return a.price < b.price end)
     return snipes
 end
 
@@ -430,12 +448,12 @@ local function sendSnipesToDiscord(snipes)
 
     -- Build snipe descriptions
     local desc = string.format(
-        "**[PLAZA — Snipe %d+ Profit!]** Server: `%s`\n"..
+        "**[PLAZA — Max %d Tokens]** Server: `%s`\n"..
         "Scanner: **@%s**\n"..
-        "Total Snipe: **%d**\n"..
+        "Total Item: **%d**\n"..
         "🔗 Join Server\n\n"..
         "**Join Script:**\n```\n%s\n```\n",
-        MIN_PROFIT, jobId:sub(1,8), player.Name, #newSnipes, teleportScript
+        MAX_PRICE, jobId:sub(1,8), player.Name, #newSnipes, teleportScript
     )
 
     -- Tambahkan tiap snipe
@@ -462,7 +480,7 @@ local function sendSnipesToDiscord(snipes)
     end
 
     local embed = {
-        title       = "🐟 [PLAZA] Snipe "..MIN_PROFIT.."+ Profit!",
+        title       = "🐟 [PLAZA] Skin/Megalodon ≤ "..MAX_PRICE.." Tokens!",
         description = desc,
         color       = 3066993,
         footer      = {
@@ -492,13 +510,28 @@ local function doScan()
     local booths = findAllBooths()
     print("🏪 Ditemukan "..#booths.." booth model di workspace")
 
-    local items = extractBoothItems()
-    print("📦 Ditemukan "..#items.." listing total")
+    local allItems = extractBoothItems()
+    print("📦 Ditemukan "..#allItems.." listing total")
 
-    if #items == 0 then
+    -- Filter hanya tracked items (skin, megalodon bermutasi)
+    local items = {}
+    for _, item in ipairs(allItems) do
+        local displayName = resolveItemName(item)
+        if isTrackedItem(displayName) or isTrackedItem(item.name) then
+            table.insert(items, item)
+        end
+    end
+    print("🎯 Tracked items (skin/megalodon): "..#items.." dari "..#allItems.." total")
+
+    if #allItems == 0 then
         print("⚠️ Tidak ada listing terdeteksi!")
         print("   Menjalankan booth structure dump untuk debug...")
         dumpBoothStructure()
+        return
+    end
+
+    if #items == 0 then
+        print("❌ Tidak ada skin/megalodon bermutasi di server ini")
         return
     end
 
@@ -527,7 +560,7 @@ local function doScan()
             print("⚠️ Webhook belum diset! Ganti WEBHOOK_URL di config.")
         end
     else
-        print("❌ Tidak ada snipe (min profit: "..MIN_PROFIT.." tokens)")
+        print("❌ Tidak ada item dengan harga ≤ "..MAX_PRICE.." tokens")
     end
 end
 
@@ -619,9 +652,11 @@ local function getServerList()
 end
 
 local function tryJoinServer(target)
-    for attempt = 1, MAX_RETRY_JOIN do
-        print(string.format("  🔌 Attempt %d/%d → %s (%d/%d players)",
-            attempt, MAX_RETRY_JOIN, target.id:sub(1,12), target.players, target.maxPlr))
+    local attempt = 0
+    while true do
+        attempt += 1
+        print(string.format("  🔌 Attempt %d → %s (%d/%d players)",
+            attempt, target.id:sub(1,12), target.players, target.maxPlr))
 
         local ok, err = pcall(function()
             TeleportService:TeleportToPlaceInstance(placeId, target.id, player)
@@ -629,26 +664,38 @@ local function tryJoinServer(target)
 
         if ok then
             print("  ✅ Teleport berhasil! Menunggu loading...")
-            -- Tunggu teleport selesai (script akan berhenti setelah teleport)
             task.wait(30)
             return true
         end
 
         local errMsg = tostring(err):lower()
         local isFull = errMsg:find("full") or errMsg:find("capacity")
-            or errMsg:find("max") or errMsg:find("teleport")
+            or errMsg:find("max") or errMsg:find("772")
+            or errMsg:find("teleport") or errMsg:find("failed")
 
         if isFull then
-            print(string.format("  ⚠️ Server penuh! Retry dalam %ds...", RETRY_DELAY))
+            print(string.format("  ⚠️ Server penuh (772)! Retry #%d dalam %ds...", attempt, RETRY_DELAY))
         else
-            print("  ⚠️ Error: "..tostring(err).." | Retry dalam "..RETRY_DELAY.."s...")
+            print("  ⚠️ Error: "..tostring(err).." | Retry #"..attempt.." dalam "..RETRY_DELAY.."s...")
         end
+
+        -- Coba dismiss dialog "Teleport Failed" jika muncul
+        pcall(function()
+            local coreGui = game:GetService("CoreGui")
+            for _, gui in ipairs(coreGui:GetDescendants()) do
+                if gui:IsA("TextButton") and gui.Text == "OK" then
+                    pcall(function() gui.Activated:Fire() end)
+                    pcall(function()
+                        for _, conn in ipairs(getconnections(gui.Activated)) do
+                            conn:Fire()
+                        end
+                    end)
+                end
+            end
+        end)
 
         task.wait(RETRY_DELAY)
     end
-
-    print("  ❌ Gagal join setelah "..MAX_RETRY_JOIN.." attempt")
-    return false
 end
 
 local function hopToNextServer()
@@ -754,10 +801,10 @@ print("🐟 ══════════════════════�
 print("🐟  Fish It! Plaza Booth Sniper v3.0")
 print("🐟  Scanner: " .. player.Name)
 print("🐟  Server:  " .. jobId:sub(1,12))
-print("🐟  Min Profit: " .. MIN_PROFIT .. " Tokens")
+print("🐟  Max Price: " .. MAX_PRICE .. " Tokens")
 print("🐟  Min Players: " .. MIN_PLAYERS)
 print("🐟  Rehop: " .. (REHOP_ENABLED and "✅ ON" or "❌ OFF"))
-print("🐟  Max Retry Join: " .. MAX_RETRY_JOIN)
+print("🐟  Filter: skin, megalodon bermutasi")
 print("🐟 ═══════════════════════════════════")
 
 -- Setup auto execute setelah teleport
@@ -791,9 +838,9 @@ getgenv().FishSniper = {
         WEBHOOK_URL = url
         print("✅ Webhook diset!")
     end,
-    setMinProfit = function(n)
-        MIN_PROFIT = n
-        print("✅ Min profit: "..n)
+    setMaxPrice = function(n)
+        MAX_PRICE = n
+        print("✅ Max price: "..n.." tokens")
     end,
     setRehop = function(on)
         REHOP_ENABLED = on
@@ -810,6 +857,6 @@ print("   getgenv().FishSniper.scan()            → scan manual")
 print("   getgenv().FishSniper.hop()             → hop manual")
 print("   getgenv().FishSniper.dump()            → dump data")
 print('   getgenv().FishSniper.setWebhook("URL")  → set webhook')
-print("   getgenv().FishSniper.setMinProfit(50)    → ubah min profit")
+print("   getgenv().FishSniper.setMaxPrice(200)    → ubah harga max")
 print("   getgenv().FishSniper.setMinPlayers(15)   → ubah min players")
 print("   getgenv().FishSniper.setRehop(false)     → matikan rehop")
