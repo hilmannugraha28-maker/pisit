@@ -18,15 +18,7 @@ local jobId   = game.JobId
 local WEBHOOK_URL    = "https://discord.com/api/webhooks/1510604266094727350/KaePnBfD09tfO6TnzwgteSJq-pqOJEFSDoz9cgOm07v8Se-_z3civS06Z6lQRZibZBuf"
 local MAX_PRICE      = 1500       -- harga MAKSIMAL (tokens) untuk di-list
 
--- ITEM FILTER: hanya track item ini
--- Semua keyword di-lowercase saat matching
--- PENTING: keyword harus SPESIFIK agar tidak match item lain
-local TRACKED_ITEMS = {
-    "megalodon bermutasi",     -- Megalodon Bermutasi
-    "mutated megalodon",      -- Mutated Megalodon (English)
-    "skin",                   -- Semua skin
-    -- JANGAN tambah "megalodon" saja, karena akan match SEMUA megalodon!
-}
+-- (Tidak ada filter item - scan SEMUA yang ada di booth)
 
 -- SERVER HOP CONFIG
 local REHOP_ENABLED  = true       -- auto pindah server setelah scan
@@ -35,18 +27,6 @@ local SCAN_WAIT      = 8          -- tunggu data load sebelum scan (detik)
 local MIN_PLAYERS    = 10         -- minimal player di server target
 local RETRY_DELAY    = 3          -- delay antar retry join (detik)
 -- ═══════════════════════════════
-
--- Cek apakah item name cocok dengan tracked items
-local function isTrackedItem(itemName)
-    if not itemName then return false end
-    local lower = itemName:lower()
-    for _, keyword in ipairs(TRACKED_ITEMS) do
-        if lower:find(keyword, 1, true) then
-            return true
-        end
-    end
-    return false
-end
 
 local httpFunc = (syn and syn.request) or (http and http.request)
     or http_request or (fluxus and fluxus.request) or request
@@ -511,47 +491,42 @@ local function doScan()
     local booths = findAllBooths()
     print("🏪 Ditemukan "..#booths.." booth model di workspace")
 
-    local allItems = extractBoothItems()
-    print("📦 Ditemukan "..#allItems.." listing total")
+    local items = extractBoothItems()
+    print("📦 Ditemukan "..#items.." listing total")
 
-    -- Filter hanya tracked items (skin, megalodon bermutasi)
-    local items = {}
-    for _, item in ipairs(allItems) do
-        local displayName = resolveItemName(item)
-        if isTrackedItem(displayName) or isTrackedItem(item.name) then
-            table.insert(items, item)
-        end
-    end
-    print("🎯 Tracked items (skin/megalodon): "..#items.." dari "..#allItems.." total")
-
-    if #allItems == 0 then
+    if #items == 0 then
         print("⚠️ Tidak ada listing terdeteksi!")
         print("   Menjalankan booth structure dump untuk debug...")
         dumpBoothStructure()
         return
     end
 
-    if #items == 0 then
-        print("❌ Tidak ada skin/megalodon bermutasi di server ini")
-        return
-    end
-
     -- Print semua listing
-    print("\n📋 Semua Listing:")
+    print("\n📋 Listing ("..#items.." item):")
+    print("  ┌─────────────────────────────────────────────────────────┐")
     for i, item in ipairs(items) do
         local name = resolveItemName(item)
-        local rapStr = item.rap > 0 and fmt(item.rap) or "?"
-        print(string.format("  %d. %s | %s Tokens | Seller: %s | RAP: %s",
-            i, name, fmt(item.price), item.seller, rapStr))
+        local rapStr = item.rap > 0 and fmt(item.rap) or "N/A"
+        print(string.format("  │ #%d  🎣 %s", i, name))
+        print(string.format("  │     💰 Harga: %s Tokens  |  📊 RAP: %s", fmt(item.price), rapStr))
+        print(string.format("  │     👤 Seller: %s  |  📍 %s", item.seller, item.path:sub(1,40)))
+        if item.rap > 0 and item.price < item.rap then
+            local save = item.rap - item.price
+            local pct = math.floor((item.price / item.rap) * 100)
+            print(string.format("  │     🔥 DEAL! %s%% of RAP (Save %s tokens)", pct, fmt(save)))
+        end
+        print("  │")
     end
+    print("  └─────────────────────────────────────────────────────────┘")
 
-    -- Cari snipe
+    -- Cari snipe (harga <= MAX_PRICE)
     local snipes = findSnipes(items)
     if #snipes > 0 then
-        print("\n🔥 SNIPE DITEMUKAN: "..#snipes)
+        print("\n🔥 ITEMS ≤ "..MAX_PRICE.." TOKENS: "..#snipes)
         for i, s in ipairs(snipes) do
-            print(string.format("  🔥 #%d %s → %s Tokens (RAP: %s, Save: %s)",
-                i, s.name, fmt(s.price), fmt(s.rap), fmt(s.save)))
+            local rapStr = s.rap > 0 and fmt(s.rap) or "N/A"
+            print(string.format("  🔥 #%d %s → %s Tokens | RAP: %s | Seller: %s",
+                i, s.name, fmt(s.price), rapStr, s.seller))
         end
 
         -- Kirim ke Discord
