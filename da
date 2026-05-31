@@ -16,7 +16,7 @@ local jobId   = game.JobId
 
 -- ═══════════ CONFIG ═══════════
 local WEBHOOK_URL    = "https://discord.com/api/webhooks/1510604266094727350/KaePnBfD09tfO6TnzwgteSJq-pqOJEFSDoz9cgOm07v8Se-_z3civS06Z6lQRZibZBuf"
-local MAX_PRICE      = 1000        -- harga MAKSIMAL (tokens) untuk di-list
+local MAX_PRICE      = 1500       -- harga MAKSIMAL (tokens) untuk di-list
 
 -- ITEM FILTER: hanya track item ini
 -- Semua keyword di-lowercase saat matching
@@ -654,48 +654,94 @@ end
 
 local function tryJoinServer(target)
     local attempt = 0
+
     while true do
         attempt += 1
         print(string.format("  🔌 Attempt %d → %s (%d/%d players)",
             attempt, target.id:sub(1,12), target.players, target.maxPlr))
 
+        -- Setup listener untuk detect ASYNC teleport failure (GameFull, etc)
+        local teleportFailed = false
+        local failReason = ""
+        local failConn = nil
+
+        pcall(function()
+            failConn = TeleportService.TeleportInitFailed:Connect(function(plr, result, errorMessage)
+                if plr == player then
+                    teleportFailed = true
+                    failReason = tostring(errorMessage or result or "Unknown")
+                    print("  ❌ Teleport GAGAL (async): "..failReason)
+                end
+            end)
+        end)
+
+        -- Fire teleport
         local ok, err = pcall(function()
             TeleportService:TeleportToPlaceInstance(placeId, target.id, player)
         end)
 
-        if ok then
-            print("  ✅ Teleport berhasil! Menunggu loading...")
-            task.wait(30)
-            return true
-        end
-
-        local errMsg = tostring(err):lower()
-        local isFull = errMsg:find("full") or errMsg:find("capacity")
-            or errMsg:find("max") or errMsg:find("772")
-            or errMsg:find("teleport") or errMsg:find("failed")
-
-        if isFull then
-            print(string.format("  ⚠️ Server penuh (772)! Retry #%d dalam %ds...", attempt, RETRY_DELAY))
+        if not ok then
+            -- Immediate error (rare)
+            print("  ⚠️ Teleport error langsung: "..tostring(err))
+            if failConn then pcall(function() failConn:Disconnect() end) end
+            task.wait(RETRY_DELAY)
+            -- Continue to next attempt
         else
-            print("  ⚠️ Error: "..tostring(err).." | Retry #"..attempt.." dalam "..RETRY_DELAY.."s...")
-        end
+            -- Teleport fired OK, tunggu apakah berhasil atau async fail
+            print("  ⏳ Menunggu respons teleport...")
 
-        -- Coba dismiss dialog "Teleport Failed" jika muncul
-        pcall(function()
-            local coreGui = game:GetService("CoreGui")
-            for _, gui in ipairs(coreGui:GetDescendants()) do
-                if gui:IsA("TextButton") and gui.Text == "OK" then
-                    pcall(function() gui.Activated:Fire() end)
-                    pcall(function()
-                        for _, conn in ipairs(getconnections(gui.Activated)) do
-                            conn:Fire()
-                        end
-                    end)
-                end
+            -- Tunggu max 15 detik untuk menentukan hasil
+            local waitTime = 0
+            local checkInterval = 0.5
+            while waitTime < 15 and not teleportFailed do
+                task.wait(checkInterval)
+                waitTime += checkInterval
             end
-        end)
 
-        task.wait(RETRY_DELAY)
+            -- Disconnect listener
+            if failConn then pcall(function() failConn:Disconnect() end) end
+
+            if teleportFailed then
+                -- Teleport gagal async (GameFull, etc)
+                local isGameFull = failReason:lower():find("full")
+                    or failReason:lower():find("gamefull")
+                    or failReason:lower():find("capacity")
+
+                if isGameFull then
+                    print(string.format("  🔄 Server PENUH! Retry #%d dalam %ds...", attempt, RETRY_DELAY))
+                else
+                    print(string.format("  🔄 Gagal: %s | Retry #%d dalam %ds...", failReason, attempt, RETRY_DELAY))
+                end
+
+                -- Dismiss dialog "Teleport Failed" jika muncul
+                pcall(function()
+                    local coreGui = game:GetService("CoreGui")
+                    for _, gui in ipairs(coreGui:GetDescendants()) do
+                        if gui:IsA("TextButton") and (gui.Text == "OK" or gui.Text == "Retry") then
+                            pcall(function()
+                                if typeof(fireclick) == "function" then fireclick(gui) end
+                            end)
+                            pcall(function() gui.Activated:Fire() end)
+                            pcall(function()
+                                if typeof(getconnections) == "function" then
+                                    for _, conn in ipairs(getconnections(gui.Activated)) do
+                                        conn:Fire()
+                                    end
+                                end
+                            end)
+                        end
+                    end
+                end)
+
+                task.wait(RETRY_DELAY)
+                -- Continue loop → retry
+            else
+                -- 15 detik tanpa fail = kemungkinan berhasil teleport
+                print("  ✅ Teleport berhasil! Loading server baru...")
+                task.wait(30)
+                return true
+            end
+        end
     end
 end
 
